@@ -5,6 +5,9 @@ const bodyParser = require("body-parser");
 const { env } = require("process");
 const mongoose = require("mongoose");
 
+// Encryption module for mongoose.
+const encrypt = require("mongoose-encryption");
+
 const port = 3000;
 const databaseURL = `mongodb://localhost:27017/userDB`;
 
@@ -28,6 +31,12 @@ const userSchema = new mongoose.Schema({
         required: true
     }
 });
+
+// Create secret key as a string to encrypt my data base.
+const secret = "Thisisourlittlesecret"; 
+
+// Add the encryption plugin to the schema.
+userSchema.plugin(encrypt, {secret: secret, encryptedFields: ["password"]});
 
 // User model for database.
 const User = new mongoose.model("User", userSchema);
