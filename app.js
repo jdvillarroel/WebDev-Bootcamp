@@ -7,9 +7,8 @@ const ejs = require("ejs");
 const bodyParser = require("body-parser");
 const { env } = require("process");
 const mongoose = require("mongoose");
-
-// Encryption module for mongoose.
-const encrypt = require("mongoose-encryption");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const port = 3000;
 const databaseURL = `mongodb://localhost:27017/userDB`;
@@ -35,11 +34,6 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Get the key to encrypt the data.
-const secret = process.env.SECRET;
-
-// Add the encryption plugin to the schema.
-userSchema.plugin(encrypt, {secret: secret, encryptedFields: ["password"]});
 
 // User model for database.
 const User = new mongoose.model("User", userSchema);
@@ -59,18 +53,25 @@ app.get("/register", (req, res) => {
 
 // ************************* POST requests *********************** //
 app.post("/register", (req, res) => {
-    const newUser = new User({
-        email: req.body.username,
-        password: req.body.password
-    });
-
-    newUser.save((err) => {
+    // Use bcrypt to hash password
+    bcrypt.hash(req.body.password, saltRounds, (err, hash) => {
         if (!err) {
-            res.render("secrets");
-        } else {
-            console.log(err);
+            const newUser = new User({
+                email: req.body.username,
+                password: hash
+            });
+        
+            newUser.save((err) => {
+                if (!err) {
+                    res.render("secrets");
+                } else {
+                    console.log(err);
+                }
+            });
         }
     });
+
+    
 });
 
 app.post("/login", (req, res) => {
@@ -80,8 +81,14 @@ app.post("/login", (req, res) => {
     User.findOne({email: username}, (err, foundUser) => {
         if (!err) {
             if(foundUser) {
-                if (foundUser.password === password)
-                    res.render("secrets");
+                bcrypt.compare(password, foundUser.password, function(err, result) {
+                    // result == true
+                    if (result === true) {
+                        res.render("secrets");
+                    } else {
+                        console.log(err);
+                    }
+                });                    
             }
         } else {
             console.log(err);
